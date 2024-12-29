@@ -6,3 +6,10 @@ pub async fn disable(piapi: PiHoleAPIConfigWithKey) {
         Err(e) => panic!("Request to disable pihole failed {:?}", e),
     };
 }
+
+pub async fn enable(piapi: PiHoleAPIConfigWithKey) {
+    match piapi.enable(){
+        Ok(status) => println!("Enable Success: {:?}", status),
+        Err(e) => panic!("Request to enable pihole failed {:?}", e),
+    };
+}
