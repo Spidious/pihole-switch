@@ -6,3 +6,8 @@ edition = "2021"
 [dependencies]
 pi-hole-api = "0.3.3"
 dotenv = "0.15"
+tray-item = "0.10.0"
+
+[build-dependencies]
+embed-resource = "2.5"
+winres = "0.1"
