@@ -8,6 +8,7 @@ use tray_item::{IconSource, TrayItem};
 pub mod pi_calls;
 
 enum Message {
+    Open,
     Quit,
     Disable,
     Enable,
@@ -40,14 +41,20 @@ fn main() {
 
 
     // Add to the tray
-    tray.add_label("Tray Label").unwrap();
-    tray.add_menu_item("Hello", || {
-        println!("Hello!");
+    tray.add_label("Pi-Hole").unwrap();
+
+    // Setup tx/rx channel
+    let (tx, rx) = mpsc::sync_channel(1);
+
+    // Setup open in browser button
+    let open_browser_tx = tx.clone();
+    tray.add_menu_item("Open in Browser", move || {
+        open_browser_tx.send(Message::Open).unwrap();
     })
     .unwrap();
-    tray.inner_mut().add_separator().unwrap();
 
-    let (tx, rx) = mpsc::sync_channel(1);
+    // Add break line
+    tray.inner_mut().add_separator().unwrap();
 
     // Setup disable button
     let disable_tx = tx.clone();
@@ -63,8 +70,10 @@ fn main() {
     })
     .unwrap();
 
+    // Add break line
     tray.inner_mut().add_separator().unwrap();
 
+    // Add quit button (exits the app)
     let quit_tx = tx.clone();
     tray.add_menu_item("Quit", move || {
         quit_tx.send(Message::Quit).unwrap();
@@ -73,6 +82,14 @@ fn main() {
 
     loop {
         match rx.recv() {
+            Ok(Message::Open) => {
+                println!("Opening in browser...");
+                let addr = pihole_addr.to_string() + "/admin";
+                match open::that(addr) {
+                    Ok(_) => {}
+                    Err(e) => {eprintln!("Error in crate Open: {}", e);}
+                };
+            }
             Ok(Message::Quit) => {
                 println!("Quit");
                 break;
