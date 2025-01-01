@@ -84,7 +84,7 @@ async fn main() {
 
     loop {
         // Update a status label to display the status of the app
-        match pi_calls::status().await {
+        match pi_calls::status(&pihole_addr, &pihole_key).await {
             Ok(status) => {
                 if let Some(rpi_status) = status.get("status") {
                     tray.inner_mut().set_menu_item_label(rpi_status, status_label).unwrap();
