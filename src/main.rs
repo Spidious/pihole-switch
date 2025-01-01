@@ -1,11 +1,10 @@
 // use std::sync::mpsc;
 use dotenv::dotenv;
-use pi_hole_api::PiHoleAPIConfigWithKey;
 use std::thread::sleep;
 use std::time::Duration;
 use std::sync::mpsc;
 use tray_item::{IconSource, TrayItem};
-pub mod pi_calls;
+pub mod piapi_handler;
 
 enum Message {
     Open,
@@ -16,18 +15,15 @@ enum Message {
 
 #[tokio::main]
 async fn main() {
-    // Get api key from environment variable
+    // Prep retrieval of environment variables
     dotenv().ok();
-    let pihole_addr = std::env::var("PI_HOLE_ADDR").expect("PI_HOLE_ADDR must be set");
-    let pihole_key = std::env::var("PI_HOLE_KEY").expect("PI_HOLE_KEY must be set");
 
-    // Replace the address and key with those of your Pi Hole
-    let pihole_api = PiHoleAPIConfigWithKey::new(
-        pihole_addr.to_string(),
-        pihole_key.to_string(),
+    // Retrieve env variables and create the api handler
+    let pi_api = piapi_handler::AuthPiHoleAPI::new(
+        std::env::var("PI_HOLE_ADDR").expect("PI_HOLE_ADDR must be set").to_string(),
+        std::env::var("PI_HOLE_KEY").expect("PI_HOLE_KEY must be set").to_string(),
     );
 
-    // Setup Tray Item
     // Setup Tray Item
     let mut tray = match TrayItem::new(
         "Pi-Hole", 
@@ -84,7 +80,7 @@ async fn main() {
 
     loop {
         // Update a status label to display the status of the app
-        match pi_calls::status(&pihole_addr, &pihole_key).await {
+        match pi_api.status().await {
             Ok(status) => {
                 if let Some(rpi_status) = status.get("status") {
                     tray.inner_mut().set_menu_item_label(rpi_status, status_label).unwrap();
@@ -94,15 +90,11 @@ async fn main() {
         }
 
 
+        // Handle the button presses from the system tray
         match rx.recv() {
             Ok(Message::Open) => {
-                println!("Opening in browser...");
-                let addr = pihole_addr.to_string() + "/admin";
-                
-                match open::that(addr) {
-                    Ok(_) => {}
-                    Err(e) => {eprintln!("Error in crate Open: {}", e);}
-                };
+                // Open the dashboard in a browser
+                pi_api.open_dashboard();
             }
             Ok(Message::Quit) => {
                 println!("Quit");
@@ -113,14 +105,20 @@ async fn main() {
                 println!("Disable!!! 20 seconds");
 
                 // 20 second disable
-                pi_calls::disable(&pihole_addr, &pihole_key, 20).await;
+                match pi_api.disable(20).await {
+                    Ok(_) => {}
+                    Err(e) => {eprintln!("Error calling disable: {}", e);}
+                };
             }
             Ok(Message::Enable) => {
                 // Handle enable call
                 println!("Enable");
                 
                 // Handle enable
-                pi_calls::enable(&pihole_api);
+                match pi_api.enable().await {
+                    Ok(_) => {}
+                    Err(e) => {eprintln!("Error calling disable: {}", e);}
+                };
 
             }
             _ => {}
