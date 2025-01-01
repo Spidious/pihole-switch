@@ -1,8 +1,8 @@
 // use std::sync::mpsc;
 use dotenv::dotenv;
 use pi_hole_api::PiHoleAPIConfigWithKey;
-// use std::thread::sleep;
-// use std::time::Duration;
+use std::thread::sleep;
+use std::time::Duration;
 use std::sync::mpsc;
 use tray_item::{IconSource, TrayItem};
 pub mod pi_calls;
@@ -14,7 +14,8 @@ enum Message {
     Enable,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     // Get api key from environment variable
     dotenv().ok();
     let pihole_addr = std::env::var("PI_HOLE_ADDR").expect("PI_HOLE_ADDR must be set");
@@ -29,7 +30,7 @@ fn main() {
     // Setup Tray Item
     // Setup Tray Item
     let mut tray = match TrayItem::new(
-        "Tray Example", 
+        "Pi-Hole", 
         IconSource::Resource("APPICON")) 
         {
         Ok(tray) => tray,
@@ -41,7 +42,8 @@ fn main() {
 
 
     // Add to the tray
-    tray.add_label("Pi-Hole").unwrap();
+    let status_label = tray.inner_mut().add_label_with_id("status_label").unwrap();
+
 
     // Setup tx/rx channel
     let (tx, rx) = mpsc::sync_channel(1);
@@ -81,10 +83,22 @@ fn main() {
     .unwrap();
 
     loop {
+        // Update a status label to display the status of the app
+        match pi_calls::status().await {
+            Ok(status) => {
+                if let Some(rpi_status) = status.get("status") {
+                    tray.inner_mut().set_menu_item_label(rpi_status, status_label).unwrap();
+                }
+            }
+            Err(e) => {eprintln!("Error calling status: {}", e);}
+        }
+
+
         match rx.recv() {
             Ok(Message::Open) => {
                 println!("Opening in browser...");
                 let addr = pihole_addr.to_string() + "/admin";
+                
                 match open::that(addr) {
                     Ok(_) => {}
                     Err(e) => {eprintln!("Error in crate Open: {}", e);}
@@ -112,5 +126,7 @@ fn main() {
             _ => {}
         }
     }
-    // sleep(Duration::from_millis(10));
+
+    // Wait 50 milliseconds
+    sleep(Duration::from_millis(500));
 }
