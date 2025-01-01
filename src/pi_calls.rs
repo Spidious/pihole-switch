@@ -1,12 +1,30 @@
 use pi_hole_api::{AuthenticatedPiHoleAPI, PiHoleAPIConfigWithKey};
 use std::collections::HashMap;
 
+trait _PiHoleAPIHost {
+    fn get_host(&self) -> &str;
+}
+
+trait _PiHoleAPIKey {
+    fn get_api_key(&self) -> &str;
+}
+
 /// Disable the pihole for n seconds
-pub fn disable(piapi: &PiHoleAPIConfigWithKey, seconds: u64) {
-    match piapi.disable(seconds){
-        Ok(status) => println!("Disable Success: {:?}", status),
-        Err(e) => panic!("Request to disable pihole failed {:?}", e),
-    };
+pub async fn disable(addr: &String, api_key: &String, seconds: u64) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
+    // Format the url
+    let url = format!("{}/admin/api.php?disable{}&auth={}",
+        addr,
+        (if seconds != 0 {format!("={}", seconds)} else {"".to_string()}),
+        api_key
+    );
+
+    // Call api
+    let resp = reqwest::get(url)
+        .await?
+        .json::<HashMap<String, String>>()
+        .await?;
+    
+    Ok(resp)
 }
 
 /// enable the pihole

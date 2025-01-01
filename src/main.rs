@@ -113,7 +113,7 @@ async fn main() {
                 println!("Disable!!! 20 seconds");
 
                 // 20 second disable
-                pi_calls::disable(&pihole_api, 20);
+                pi_calls::disable(&pihole_addr, &pihole_key, 20).await;
             }
             Ok(Message::Enable) => {
                 // Handle enable call
