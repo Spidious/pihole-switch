@@ -3,8 +3,6 @@
 
 //Begin imports
 use dotenv::dotenv;
-// use std::thread::sleep;
-use std::time::Duration;
 use std::sync::mpsc;
 use tray_item::{IconSource, TrayItem};
 pub mod piapi_handler;
@@ -65,8 +63,8 @@ async fn main() {
 
     // Retrieve env variables and create the api handler
     let pi_api = piapi_handler::AuthPiHoleAPI::new(
-        std::env::var("PI_HOLE_ADDR").expect("PI_HOLE_ADDR must be set").to_string(),
-        std::env::var("PI_HOLE_KEY").expect("PI_HOLE_KEY must be set").to_string(),
+        std::env::var("PI_HOLE_ADDR").expect("PI_HOLE_ADDR must be set").clone(),
+        std::env::var("PI_HOLE_KEY").expect("PI_HOLE_KEY must be set").clone(),
     );
 
     // Setup Tray Item
@@ -144,32 +142,26 @@ async fn main() {
 
     // infinite loop to keep app from dying
     loop {
-        // Update a status label to display the status of the app
-        match pi_api.status().await {
-            Ok(status) => {
-                if let Some(rpi_status) = status.get("status") {
-                    tray.inner_mut().set_menu_item_label(format!("Status: {}", rpi_status).as_str(), status_label).unwrap();
-                    // Set tray icon status
-                    if rpi_status == "enabled" {
-                        tray.set_icon(IconSource::Resource("APPICON_ENABLED")).unwrap();
-                    } else {
-                        tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
-                    }
+        if let Ok(status) = pi_api.status().await {
+            if let Some(rpi_status) = status.get("status") {
+                tray.inner_mut().set_menu_item_label(format!("Status: {}", rpi_status).as_str(), status_label).unwrap();
+                // Set tray icon status
+                if rpi_status == "enabled" {
+                    tray.set_icon(IconSource::Resource("APPICON_ENABLED")).unwrap();
                 } else {
                     tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
                 }
-                
-            }
-            Err(_) => {
-                // Set tray icon status
+            } else {
                 tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
             }
+        } else {
+            // Set tray icon status
+            tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
         }
-
 
         // Handle the button presses from the system tray
         // Specifically stop here for 50ms because the status above needs to execute
-        match rx.recv_timeout(Duration::from_millis(50)) {
+        match rx.recv_timeout(std::time::Duration::from_millis(100)) {
             Ok(Message::Open) => {
                 // Open the dashboard in a browser
                 pi_api.open_dashboard();
