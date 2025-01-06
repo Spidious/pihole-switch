@@ -8,6 +8,7 @@ use tray_item::{IconSource, TrayItem};
 pub mod piapi_handler;
 
 // Used for rx/tx of the system tray menu
+#[derive(PartialEq)]
 enum Message {
     Open,
     Quit,
@@ -161,53 +162,38 @@ async fn main() {
 
         // Handle the button presses from the system tray
         // Specifically stop here for 50ms because the status above needs to execute
-        match rx.recv_timeout(std::time::Duration::from_millis(100)) {
-            Ok(Message::Open) => {
-                // Open the dashboard in a browser
+        if let Ok(message) = rx.recv_timeout(std::time::Duration::from_millis(100)) {
+            if message == Message::Open {
                 pi_api.open_dashboard();
-            }
-            Ok(Message::Quit) => {
+            } else if message == Message::Quit {
+                // Close the application
                 println!("Quit");
                 break;
-            }
-            Ok(Message::Disable10) => {
-                // Handle disable call
+            } else if message == Message::Disable10 {
                 println!("Disable!!! 10 seconds");
 
-                // 20 second disable
-                match pi_api.disable(10).await {
-                    Ok(_) => {}
-                    Err(e) => {eprintln!("Error calling disable: {}", e);}
-                };
-            }
-            Ok(Message::Disable30) => {
-                // Handle disable call
+                // Disable for 10 seconds
+                if let Err(e) = pi_api.disable(10).await {
+                    eprintln!("Error calling disable: {}", e);
+                }
+            } else if message == Message::Disable30 {
                 println!("Disable!!! 30 seconds");
 
-                // 20 second disable
-                match pi_api.disable(30).await {
-                    Ok(_) => {}
-                    Err(e) => {eprintln!("Error calling disable: {}", e);}
-                };
-            }
-            Ok(Message::Disable5min) => {
-                // Handle disable call
+                // Disable for 30 seconds
+                if let Err(e) = pi_api.disable(30).await {
+                    eprintln!("Error calling disable: {}", e);
+                }
+            } else if message == Message::Disable5min {
                 println!("Disable!!! 5 minutes");
 
-                // 20 second disable
-                match pi_api.disable(60*5).await {
-                    Ok(_) => {}
-                    Err(e) => {eprintln!("Error calling disable: {}", e);}
-                };
-            }
-            Ok(Message::Toggle) => {
-                // Handle enable call
+                // Disable for 60 * 5 seconds
+                if let Err(e) = pi_api.disable(60 * 5).await {
+                    eprintln!("Error calling disable: {}", e);
+                }
+            } else if message == Message::Toggle {
                 println!("Toggle");
-                
-                // Call the toggle functionality
                 toggle_pihole(&pi_api).await;
             }
-            _ => {}
         }
     }
 
