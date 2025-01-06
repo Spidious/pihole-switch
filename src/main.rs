@@ -1,14 +1,15 @@
 // Run without terminal if not in debug
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// use std::sync::mpsc;
+//Begin imports
 use dotenv::dotenv;
-use std::thread::sleep;
+// use std::thread::sleep;
 use std::time::Duration;
 use std::sync::mpsc;
 use tray_item::{IconSource, TrayItem};
 pub mod piapi_handler;
 
+// Used for rx/tx of the system tray menu
 enum Message {
     Open,
     Quit,
@@ -18,7 +19,9 @@ enum Message {
     Toggle,
 }
 
+/// Determine the current state of pihole and toggle it on or off respectively
 async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
+    // Start match for the status call
     match piapi.status().await {
         Ok(status) => {
             match status.get("status").map(String::as_str) {
@@ -69,7 +72,7 @@ async fn main() {
     // Setup Tray Item
     let mut tray = match TrayItem::new(
         "Pi-Hole", 
-        IconSource::Resource("APPICON")) 
+        IconSource::Resource("APPICON_DISABLED")) 
         {
         Ok(tray) => tray,
         Err(e) => {
@@ -139,20 +142,34 @@ async fn main() {
     })
     .unwrap();
 
+    // infinite loop to keep app from dying
     loop {
         // Update a status label to display the status of the app
         match pi_api.status().await {
             Ok(status) => {
                 if let Some(rpi_status) = status.get("status") {
                     tray.inner_mut().set_menu_item_label(format!("Status: {}", rpi_status).as_str(), status_label).unwrap();
+                    // Set tray icon status
+                    if rpi_status == "enabled" {
+                        tray.set_icon(IconSource::Resource("APPICON_ENABLED")).unwrap();
+                    } else {
+                        tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
+                    }
+                } else {
+                    tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
                 }
+                
             }
-            Err(e) => {eprintln!("Error calling status: {}", e);}
+            Err(_) => {
+                // Set tray icon status
+                tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
+            }
         }
 
 
         // Handle the button presses from the system tray
-        match rx.recv() {
+        // Specifically stop here for 50ms because the status above needs to execute
+        match rx.recv_timeout(Duration::from_millis(50)) {
             Ok(Message::Open) => {
                 // Open the dashboard in a browser
                 pi_api.open_dashboard();
@@ -202,6 +219,6 @@ async fn main() {
         }
     }
 
-    // Wait 50 milliseconds
-    sleep(Duration::from_millis(500));
+    // Wait 50 milliseconds to decrease cpu usage while idle
+    // sleep(Duration::from_millis(500));
 }

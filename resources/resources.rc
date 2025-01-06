@@ -1,1 +1,3 @@
-APPICON ICON "Pi-hole_Logo.ico"
+APPICON_BLANK ICON "Pi-hole_blank.ico"
+APPICON_ENABLED ICON "Pi-hole_enabled.ico"
+APPICON_DISABLED ICON "Pi-hole_disabled.ico"
