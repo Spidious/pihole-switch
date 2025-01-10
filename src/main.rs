@@ -4,9 +4,59 @@
 //Begin imports
 use dotenv::dotenv;
 use std::sync::mpsc;
-use log::{info, warn};
 use tray_item::{IconSource, TrayItem};
 pub mod piapi_handler;
+
+// Create general logging message macro
+#[macro_export]
+macro_rules! log_message {
+    ($level:expr, $msg:expr) => {{
+        use std::fs::OpenOptions;
+        use std::io::Write;
+        use chrono::Local;
+
+        // Format timestamp MM-DD-YYYY hh:mm:ss
+        let timestamp = Local::now().format("%m-%d-%Y %H:%M:%S").to_string();
+        // Format string
+        let log_entry = format!("[{}][{}] {}\n", $level, timestamp, $msg);
+
+        // Open or create the log file
+        // If it doesn't exist, create it. then, append to it
+        let mut file = OpenOptions::new()
+            .create(true)  
+            .append(true)  
+            .open("output.log")
+            .expect("Failed to open log file");
+
+        // Write the log entry to the file
+        file.write_all(log_entry.as_bytes())
+            .expect("Failed to write to log file");
+    }};
+}
+
+// Define other macros for specific log levels
+#[macro_export]
+macro_rules! log_info {
+    ($msg:expr) => {
+        log_message!("INFO", $msg);
+    };
+}
+
+#[macro_export]
+macro_rules! log_warn {
+    ($msg:expr) => {
+        log_message!("WARN", $msg);
+    };
+}
+
+#[macro_export]
+macro_rules! log_err {
+    ($msg:expr) => {
+        log_message!("ERROR", $msg);
+    };
+}
+
+
 
 // Used for rx/tx of the system tray menu
 #[derive(PartialEq)]
@@ -19,6 +69,7 @@ enum Message {
     Toggle,
 }
 
+
 /// Determine the current state of pihole and toggle it on or off respectively
 async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
     // Start match for the status call
@@ -30,6 +81,7 @@ async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
                     match piapi.disable(0).await {
                         Ok(_) => {}
                         Err(e) => {
+                            log_err!(format!("Error trying to disable: {}", e));
                             eprintln!("Error trying to disable: {}", e);
                         }
                     }
@@ -39,20 +91,24 @@ async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
                     match piapi.enable().await {
                         Ok(_) => {}
                         Err(e) => {
+                            log_err!(format!("Error trying to enable: {}", e));
                             eprintln!("Error trying to enable: {}", e);
                         }
                     }
                 }
                 Some(other) => {
+                    log_err!(format!("Unexpected value in status: {}", other));
                     eprintln!("Unexpected value in status: {}", other);
                 }
                 None => {
+                    log_err!("Key \"status\" not found in status api function");
                     eprintln!("Key \"status\" not found in status api function");
                 }
             }
 
         }
         Err(e) => {
+            log_err!(format!("ERROR getting status {}", e));
             eprintln!("ERROR getting status {}", e);
         }
     }
@@ -76,6 +132,7 @@ async fn main() {
         {
         Ok(tray) => tray,
         Err(e) => {
+            log_err!(format!("Failed to create tray item: {}", e));
             eprintln!("Failed to create tray item: {}", e);
             return;
         },
@@ -142,6 +199,8 @@ async fn main() {
     })
     .unwrap();
 
+    log_info!("Setup Complete! Entering mainloop");
+
     // infinite loop to keep app from dying
     loop {
         if let Ok(status) = pi_api.status().await {
@@ -154,6 +213,7 @@ async fn main() {
                     tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
                 }
             } else {
+                log_warn!("'status' was not returned by the status API call");
                 tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
             }
         } else {
@@ -166,38 +226,47 @@ async fn main() {
         if let Ok(message) = rx.recv_timeout(std::time::Duration::from_millis(100)) {
             if message == Message::Open {
                 pi_api.open_dashboard();
+                log_info!("Action Received: Open Dashboard");
             } else if message == Message::Quit {
                 // Close the application
                 println!("Quit");
+                log_info!("Action Received: Quit");
                 break;
             } else if message == Message::Disable10 {
                 println!("Disable!!! 10 seconds");
-
+                log_info!("Action Received: Disable 10 Seconds");
                 // Disable for 10 seconds
                 if let Err(e) = pi_api.disable(10).await {
+                    log_err!(format!("Action Failed: Disable 10 seconds => {}", e));
                     eprintln!("Error calling disable: {}", e);
                 }
             } else if message == Message::Disable30 {
                 println!("Disable!!! 30 seconds");
+                log_info!("Action Received: Disable 30 Seconds");
 
                 // Disable for 30 seconds
                 if let Err(e) = pi_api.disable(30).await {
+                    log_err!(format!("Action Failed: Disable 30 seconds => {}", e));
                     eprintln!("Error calling disable: {}", e);
                 }
             } else if message == Message::Disable5min {
                 println!("Disable!!! 5 minutes");
+                log_info!("Action Received: Disable 5 Minutes");
 
                 // Disable for 60 * 5 seconds
                 if let Err(e) = pi_api.disable(60 * 5).await {
+                    log_err!(format!("Action Failed: Disable 5 minutes => {}", e));
                     eprintln!("Error calling disable: {}", e);
                 }
             } else if message == Message::Toggle {
                 println!("Toggle");
+                log_info!("Action Received: Toggle");
                 toggle_pihole(&pi_api).await;
             }
         }
     }
 
+    log_warn!("Warning: Loop exited program ending");
     // Wait 50 milliseconds to decrease cpu usage while idle
     // sleep(Duration::from_millis(500));
 }
