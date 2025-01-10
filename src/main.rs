@@ -18,7 +18,7 @@ macro_rules! log_message {
         // Format timestamp MM-DD-YYYY hh:mm:ss
         let timestamp = Local::now().format("%m-%d-%Y %H:%M:%S").to_string();
         // Format string
-        let log_entry = format!("[{}][{}] {}\n", $level, timestamp, $msg);
+        let log_entry = format!("[{}][{}]  {} {}\n", $level, timestamp, if ($level == "WARN") {"Warning:"} else {if ($level == "ERROR") {"Error:"} else {""}},$msg);
 
         // Open or create the log file
         // If it doesn't exist, create it. then, append to it
@@ -91,7 +91,7 @@ async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
                     match piapi.enable().await {
                         Ok(_) => {}
                         Err(e) => {
-                            log_err!(format!("Error trying to enable: {}", e));
+                            log_err!(format!("Issue trying to enable: {}", e));
                             eprintln!("Error trying to enable: {}", e);
                         }
                     }
@@ -108,7 +108,7 @@ async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
 
         }
         Err(e) => {
-            log_err!(format!("ERROR getting status {}", e));
+            log_err!(format!("Issue getting status {}", e));
             eprintln!("ERROR getting status {}", e);
         }
     }
@@ -218,6 +218,7 @@ async fn main() {
             }
         } else {
             // Set tray icon status
+            // This should run if a call to the api does not return (Pihole is not reachable for any reason)
             tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
         }
 
@@ -225,6 +226,7 @@ async fn main() {
         // Specifically stop here for 50ms because the status above needs to execute
         if let Ok(message) = rx.recv_timeout(std::time::Duration::from_millis(100)) {
             if message == Message::Open {
+                // Open dashboard in browser
                 pi_api.open_dashboard();
                 log_info!("Action Received: Open Dashboard");
             } else if message == Message::Quit {
@@ -233,9 +235,9 @@ async fn main() {
                 log_info!("Action Received: Quit");
                 break;
             } else if message == Message::Disable10 {
+                // Disable for 10 seconds
                 println!("Disable!!! 10 seconds");
                 log_info!("Action Received: Disable 10 Seconds");
-                // Disable for 10 seconds
                 if let Err(e) = pi_api.disable(10).await {
                     log_err!(format!("Action Failed: Disable 10 seconds => {}", e));
                     eprintln!("Error calling disable: {}", e);
@@ -266,7 +268,7 @@ async fn main() {
         }
     }
 
-    log_warn!("Warning: Loop exited program ending");
+    log_warn!("Loop exited program ending");
     // Wait 50 milliseconds to decrease cpu usage while idle
     // sleep(Duration::from_millis(500));
 }
