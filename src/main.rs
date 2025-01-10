@@ -4,6 +4,7 @@
 //Begin imports
 use dotenv::dotenv;
 use std::sync::mpsc;
+use log::{info, warn};
 use tray_item::{IconSource, TrayItem};
 pub mod piapi_handler;
 

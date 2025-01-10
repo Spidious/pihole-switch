@@ -905,6 +905,7 @@ version = "0.1.0"
 dependencies = [
  "dotenv",
  "embed-resource",
+ "log",
  "open",
  "reqwest",
  "tokio",
