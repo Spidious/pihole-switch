@@ -5,6 +5,7 @@
 use dotenv::dotenv;
 use std::sync::mpsc;
 use tray_item::{IconSource, TrayItem};
+use tray_icon::{TrayIconBuilder, menu::Menu, menu::MenuItemBuilder};
 pub mod piapi_handler;
 
 // Used for rx/tx of the system tray menu
@@ -67,6 +68,25 @@ async fn main() {
         std::env::var("PI_HOLE_ADDR").expect("PI_HOLE_ADDR must be set").clone(),
         std::env::var("PI_HOLE_KEY").expect("PI_HOLE_KEY must be set").clone(),
     );
+
+    // Create tray icon menu items
+    let menu_items: &[&dyn tray_icon::menu::IsMenuItem] = &[
+        &MenuItemBuilder::new()
+            .text("Test1")
+            .enabled(true)
+            .build(),
+    ];
+
+    // Create system tray menu
+    let tray_menu = Menu::with_items(menu_items).unwrap();
+
+    // Create system tray icon
+    let tray_icon = TrayIconBuilder::new()
+        .with_menu(Box::new(tray_menu))
+        .with_tooltip("system-tray - tray icon library!")
+        .with_icon(tray_icon::Icon::from_resource_name("APPICON_DISABLED", None).expect("REASON"))
+        .build()
+        .unwrap();
 
     // Setup Tray Item
     let mut tray = match TrayItem::new(
