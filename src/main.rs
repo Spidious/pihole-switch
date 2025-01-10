@@ -18,7 +18,7 @@ macro_rules! log_message {
         // Format timestamp MM-DD-YYYY hh:mm:ss
         let timestamp = Local::now().format("%m-%d-%Y %H:%M:%S").to_string();
         // Format string
-        let log_entry = format!("[{}][{}]  {} {}\n", $level, timestamp, if ($level == "WARN") {"Warning:"} else {if ($level == "ERROR") {"Error:"} else {""}},$msg);
+        let log_entry = format!("[{}][{}] {} {}\n", $level, timestamp, if ($level == "WARN") {"Warning:"} else {if ($level == "ERROR") {"Error:"} else {""}},$msg);
 
         // Open or create the log file
         // If it doesn't exist, create it. then, append to it
@@ -68,7 +68,6 @@ enum Message {
     Disable5min,
     Toggle,
 }
-
 
 /// Determine the current state of pihole and toggle it on or off respectively
 async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
@@ -201,25 +200,42 @@ async fn main() {
 
     log_info!("Setup Complete! Entering mainloop");
 
+    let mut connection_status: bool = false;
+
     // infinite loop to keep app from dying
     loop {
         if let Ok(status) = pi_api.status().await {
             if let Some(rpi_status) = status.get("status") {
                 tray.inner_mut().set_menu_item_label(format!("Status: {}", rpi_status).as_str(), status_label).unwrap();
                 // Set tray icon status
-                if rpi_status == "enabled" {
-                    tray.set_icon(IconSource::Resource("APPICON_ENABLED")).unwrap();
-                } else {
-                    tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
+                if rpi_status == "enabled" && !connection_status { // If status is enabled and connection_status shows disabled
+                    // Attempt to display enabled
+                    if let Err(e) = tray.set_icon(IconSource::Resource("APPICON_ENABLED")) {
+                        log_err!(format!("Could not set resource for APPICON_ENABLED: {}", e));
+                        println!("Just allowing for a timestamp to be logged");
+                    } else {
+                        connection_status = true; // mark as enabled
+                    }
+                    
+                } else if rpi_status == "disabled" && connection_status{ // if status is disabled and connection_status shows enabled
+                    // Attempt to display disabled
+                    if let Err(e) = tray.set_icon(IconSource::Resource("APPICON_DISABLED")) {
+                        log_err!(format!("Could not set resource APPICON_DISABLED: {}", e));
+                        println!("Just allowing for a timestamp to be logged");
+                    } else {
+                        connection_status = false;
+                    }
                 }
             } else {
                 log_warn!("'status' was not returned by the status API call");
                 tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
+                connection_status = false;
             }
         } else {
             // Set tray icon status
             // This should run if a call to the api does not return (Pihole is not reachable for any reason)
             tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
+            connection_status = false;
         }
 
         // Handle the button presses from the system tray
