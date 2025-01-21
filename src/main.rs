@@ -210,32 +210,31 @@ async fn main() {
                 // Set tray icon status
                 if rpi_status == "enabled" && !connection_status { // If status is enabled and connection_status shows disabled
                     // Attempt to display enabled
-                    if let Err(e) = tray.set_icon(IconSource::Resource("APPICON_ENABLED")) {
-                        log_err!(format!("Could not set resource for APPICON_ENABLED: {}", e));
-                        println!("Just allowing for a timestamp to be logged");
-                    } else {
-                        connection_status = true; // mark as enabled
-                    }
+                    log_info!("Connection Status Updated: Connected");
+                    tray.set_icon(IconSource::Resource("APPICON_ENABLED")).unwrap();
+                    connection_status = true; // mark as enabled
                     
                 } else if rpi_status == "disabled" && connection_status{ // if status is disabled and connection_status shows enabled
-                    // Attempt to display disabled
-                    if let Err(e) = tray.set_icon(IconSource::Resource("APPICON_DISABLED")) {
-                        log_err!(format!("Could not set resource APPICON_DISABLED: {}", e));
-                        println!("Just allowing for a timestamp to be logged");
-                    } else {
-                        connection_status = false;
-                    }
+                    log_info!("Connection Status Updated: Disconnected");
+                    tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
+                    connection_status = false;
                 }
             } else {
-                log_warn!("'status' was not returned by the status API call");
-                tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
-                connection_status = false;
+                if connection_status { // if connection_status displays as connected
+                    log_info!("Connection Status Updated: Disconnected");
+                    log_warn!("'status' was not returned by the status API call"); 
+                    tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap(); // display disconnected
+                    connection_status = false;
+                }
             }
         } else {
             // Set tray icon status
             // This should run if a call to the api does not return (Pihole is not reachable for any reason)
-            tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
-            connection_status = false;
+            if connection_status { // if connection_status displays as connected.
+                log_info!("Connection Status Updated: Disconnected");
+                tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap(); // display disconnected
+                connection_status = false;
+            }
         }
 
         // Handle the button presses from the system tray
