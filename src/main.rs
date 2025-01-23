@@ -4,8 +4,11 @@
 //Begin imports
 use dotenv::dotenv;
 use std::sync::mpsc;
-use tray_item::{IconSource, TrayItem};
 pub mod piapi_handler;
+pub mod tray_handler;
+
+// Hold the tray with the status and fail_count
+
 
 // Create general logging message macro
 #[macro_export]
@@ -60,7 +63,7 @@ macro_rules! log_err {
 
 // Used for rx/tx of the system tray menu
 #[derive(PartialEq)]
-enum Message {
+pub enum Message {
     Open,
     Quit,
     Disable10,
@@ -125,116 +128,106 @@ async fn main() {
     );
 
     // Setup Tray Item
-    let mut tray = match TrayItem::new(
-        "Pi-Hole", 
-        IconSource::Resource("APPICON_DISABLED")) 
-        {
-        Ok(tray) => tray,
-        Err(e) => {
-            log_err!(format!("Failed to create tray item: {}", e));
-            eprintln!("Failed to create tray item: {}", e);
-            return;
-        },
-    };
-
+    // let mut tray = match TrayItem::new(
+    //     "Pi-Hole", 
+    //     IconSource::Resource("APPICON_DISABLED")) 
+    //     {
+    //     Ok(tray) => tray,
+    //     Err(e) => {
+    //         log_err!(format!("Failed to create tray item: {}", e));
+    //         eprintln!("Failed to create tray item: {}", e);
+    //         return;
+    //     },
+    // };
+    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole", 3);
 
     // Add to the tray
-    let status_label = tray.inner_mut().add_label_with_id("status_label").unwrap();
+    let status_label = pi_tray.tray.inner_mut().add_label_with_id("status_label").unwrap();
 
 
     // Setup tx/rx channel
     let (tx, rx) = mpsc::sync_channel(1);
     
     // Add break line
-    tray.inner_mut().add_separator().unwrap();
+    pi_tray.tray.inner_mut().add_separator().unwrap();
 
     
     
     // Setup open in browser button
     let open_browser_tx = tx.clone();
-    tray.add_menu_item("Open in Browser", move || {
+    pi_tray.tray.add_menu_item("Open in Browser", move || {
         open_browser_tx.send(Message::Open).unwrap();
     })
     .unwrap();
 
     // Add break line
-    tray.inner_mut().add_separator().unwrap();
+    pi_tray.tray.inner_mut().add_separator().unwrap();
 
     // Setup enable button
     let toggle_tx = tx.clone();
-    tray.add_menu_item("Toggle", move || {
+    pi_tray.tray.add_menu_item("Toggle", move || {
         toggle_tx.send(Message::Toggle).unwrap();
     })
     .unwrap();
     
     // Setup disable button
     let disable_tx = tx.clone();
-    tray.add_menu_item("Disable 10 Seconds", move || {
+    pi_tray.tray.add_menu_item("Disable 10 Seconds", move || {
         disable_tx.send(Message::Disable10).unwrap();
     })
     .unwrap();
 
     // Setup disable button
     let disable_tx = tx.clone();
-    tray.add_menu_item("Disable 30 Seconds", move || {
+    pi_tray.tray.add_menu_item("Disable 30 Seconds", move || {
         disable_tx.send(Message::Disable30).unwrap();
     })
     .unwrap();
 
     // Setup disable button
     let disable_tx = tx.clone();
-    tray.add_menu_item("Disable 5 minutes", move || {
+    pi_tray.tray.add_menu_item("Disable 5 minutes", move || {
         disable_tx.send(Message::Disable5min).unwrap();
     })
     .unwrap();
 
     // Add break line
-    tray.inner_mut().add_separator().unwrap();
+    pi_tray.tray.inner_mut().add_separator().unwrap();
 
     // Add quit button (exits the app)
     let quit_tx = tx.clone();
-    tray.add_menu_item("Quit", move || {
+    pi_tray.tray.add_menu_item("Quit", move || {
         quit_tx.send(Message::Quit).unwrap();
     })
     .unwrap();
 
     log_info!("Setup Complete! Entering mainloop");
 
-    let mut connection_status: bool = false;
-
     // infinite loop to keep app from dying
     loop {
         if let Ok(status) = pi_api.status().await {
             if let Some(rpi_status) = status.get("status") {
-                tray.inner_mut().set_menu_item_label(format!("Status: {}", rpi_status).as_str(), status_label).unwrap();
+                pi_tray.tray.inner_mut().set_menu_item_label(format!("Status: {}", rpi_status).as_str(), status_label).unwrap();
                 // Set tray icon status
-                if rpi_status == "enabled" && !connection_status { // If status is enabled and connection_status shows disabled
+                if rpi_status == "enabled" { // If status is enabled and connection_status shows disabled
                     // Attempt to display enabled
                     log_info!("Connection Status Updated: Connected");
-                    tray.set_icon(IconSource::Resource("APPICON_ENABLED")).unwrap();
-                    connection_status = true; // mark as enabled
+                    pi_tray.show_enabled();
                     
-                } else if rpi_status == "disabled" && connection_status{ // if status is disabled and connection_status shows enabled
+                } else if rpi_status == "disabled" { // if status is disabled and connection_status shows enabled
                     log_info!("Connection Status Updated: Disconnected");
-                    tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
-                    connection_status = false;
+                    pi_tray.show_disabled();
                 }
             } else {
-                if connection_status { // if connection_status displays as connected
-                    log_info!("Connection Status Updated: Disconnected");
-                    log_warn!("'status' was not returned by the status API call"); 
-                    tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap(); // display disconnected
-                    connection_status = false;
-                }
+                log_info!("Connection Status Updated: Disconnected");
+                log_warn!("'status' was not returned by the status API call"); 
+                pi_tray.show_disabled();
             }
         } else {
             // Set tray icon status
             // This should run if a call to the api does not return (Pihole is not reachable for any reason)
-            if connection_status { // if connection_status displays as connected.
-                log_info!("Connection Status Updated: Disconnected");
-                tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap(); // display disconnected
-                connection_status = false;
-            }
+            log_info!("Connection Status Updated: Disconnected");
+            pi_tray.show_disabled();
         }
 
         // Handle the button presses from the system tray
@@ -284,6 +277,6 @@ async fn main() {
     }
 
     log_warn!("Loop exited program ending");
-    // Wait 50 milliseconds to decrease cpu usage while idle
+    // // Wait 50 milliseconds to decrease cpu usage while idle
     // sleep(Duration::from_millis(500));
 }
