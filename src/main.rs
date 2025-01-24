@@ -7,8 +7,12 @@ use std::sync::mpsc;
 pub mod piapi_handler;
 pub mod tray_handler;
 
-// Hold the tray with the status and fail_count
-
+// For async handling, just to make it shorter
+macro_rules! block_on {
+    ($expr:expr) => {{
+        tokio::runtime::Runtime::new().unwrap().block_on($expr)
+    }};
+}
 
 // Create general logging message macro
 #[macro_export]
@@ -58,8 +62,6 @@ macro_rules! log_err {
         log_message!("ERROR", $msg);
     };
 }
-
-
 
 // Used for rx/tx of the system tray menu
 #[derive(PartialEq)]
@@ -116,8 +118,8 @@ async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
     }
 }
 
-#[tokio::main]
-async fn main() {
+// #[tokio::main]
+fn main() {
     // Prep retrieval of environment variables
     dotenv().ok();
 
@@ -127,19 +129,8 @@ async fn main() {
         std::env::var("PI_HOLE_KEY").expect("PI_HOLE_KEY must be set").clone(),
     );
 
-    // Setup Tray Item
-    // let mut tray = match TrayItem::new(
-    //     "Pi-Hole", 
-    //     IconSource::Resource("APPICON_DISABLED")) 
-    //     {
-    //     Ok(tray) => tray,
-    //     Err(e) => {
-    //         log_err!(format!("Failed to create tray item: {}", e));
-    //         eprintln!("Failed to create tray item: {}", e);
-    //         return;
-    //     },
-    // };
-    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole", 3);
+
+    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole - NON RELEASE", 2);
 
     // Add to the tray
     let status_label = pi_tray.tray.inner_mut().add_label_with_id("status_label").unwrap();
@@ -205,29 +196,32 @@ async fn main() {
 
     // infinite loop to keep app from dying
     loop {
-        if let Ok(status) = pi_api.status().await {
-            if let Some(rpi_status) = status.get("status") {
-                pi_tray.tray.inner_mut().set_menu_item_label(format!("Status: {}", rpi_status).as_str(), status_label).unwrap();
-                // Set tray icon status
-                if rpi_status == "enabled" { // If status is enabled and connection_status shows disabled
-                    // Attempt to display enabled
-                    log_info!("Connection Status Updated: Connected");
+        match pi_tray.test(|| {
+            // Use block_on to call the async function in a synchronous context
+            block_on!(async {
+                pi_api.status().await  // Call the async function and await its result
+            })
+        }) {
+            Ok(response) => {
+                // Parse the output of the api call
+                let status = response.get("status").unwrap();
+
+                // check enabled or disabled
+                if status == "enabled" {
+                    // Display enabled
+                    pi_tray.tray.inner_mut().set_menu_item_label("Status: Enabled", status_label).unwrap();
                     pi_tray.show_enabled();
-                    
-                } else if rpi_status == "disabled" { // if status is disabled and connection_status shows enabled
-                    log_info!("Connection Status Updated: Disconnected");
+                } else {
+                    // Display disabled
+                    pi_tray.tray.inner_mut().set_menu_item_label("Status: Disabled", status_label).unwrap();
                     pi_tray.show_disabled();
                 }
-            } else {
-                log_info!("Connection Status Updated: Disconnected");
-                log_warn!("'status' was not returned by the status API call"); 
+            },
+            Err(_) => {
+                // Display disabled
+                pi_tray.tray.inner_mut().set_menu_item_label("Status: Disabled", status_label).unwrap();
                 pi_tray.show_disabled();
             }
-        } else {
-            // Set tray icon status
-            // This should run if a call to the api does not return (Pihole is not reachable for any reason)
-            log_info!("Connection Status Updated: Disconnected");
-            pi_tray.show_disabled();
         }
 
         // Handle the button presses from the system tray
@@ -246,7 +240,7 @@ async fn main() {
                 // Disable for 10 seconds
                 println!("Disable!!! 10 seconds");
                 log_info!("Action Received: Disable 10 Seconds");
-                if let Err(e) = pi_api.disable(10).await {
+                if let Err(e) = block_on!(async {pi_api.disable(10).await}) {
                     log_err!(format!("Action Failed: Disable 10 seconds => {}", e));
                     eprintln!("Error calling disable: {}", e);
                 }
@@ -255,7 +249,7 @@ async fn main() {
                 log_info!("Action Received: Disable 30 Seconds");
 
                 // Disable for 30 seconds
-                if let Err(e) = pi_api.disable(30).await {
+                if let Err(e) = block_on!(async {pi_api.disable(30).await}) {
                     log_err!(format!("Action Failed: Disable 30 seconds => {}", e));
                     eprintln!("Error calling disable: {}", e);
                 }
@@ -264,14 +258,14 @@ async fn main() {
                 log_info!("Action Received: Disable 5 Minutes");
 
                 // Disable for 60 * 5 seconds
-                if let Err(e) = pi_api.disable(60 * 5).await {
+                if let Err(e) = block_on!(async {pi_api.disable(60 * 5).await}) {
                     log_err!(format!("Action Failed: Disable 5 minutes => {}", e));
                     eprintln!("Error calling disable: {}", e);
                 }
             } else if message == Message::Toggle {
                 println!("Toggle");
                 log_info!("Action Received: Toggle");
-                toggle_pihole(&pi_api).await;
+                block_on!(async {toggle_pihole(&pi_api).await});
             }
         }
     }

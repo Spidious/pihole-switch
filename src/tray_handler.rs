@@ -65,4 +65,22 @@ impl TrayIcon {
     pub fn is_enabled(&mut self) -> bool{
         return self.status;
     }
+
+    // Handle pass/fail on a given Result<> function
+    pub fn test<F, T, U>(&mut self, func: F) -> Result<T, u8>
+    where
+        F: Fn() -> Result<T, U>,   // The closure should return a value of type T if successful. Not concerned with Err
+    {
+        // call func. If Ok, mark as pass and return the output T
+        if let Ok(value) = func() {
+            self.pass();
+            return Ok(value);
+        }
+
+        // test function output at this point is always Err. map the Ok and Err from fail marker to Err
+        match self.fail() {
+            Ok(count) => Err(count),
+            Err(count) => Err(count)
+        }
+    }
 }
