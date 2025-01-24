@@ -36,9 +36,9 @@ impl TrayIcon {
 
     // handler to increment fail_count
     pub fn fail(&mut self) -> Result<u8, u8>{
-        self.fail_count += 1; // increment the count (this will cap at 255 due to the type u8)
 
-        if self.fail_count < self.fail_limit {
+        if self.fail_count  < self.fail_limit {
+            self.fail_count += 1; // Do not want to increment past fail_limit
             Ok(self.fail_count)     // Return the count as Ok
         } else {
             Err(self.fail_count) // Return the count as Err (limit has been reached or exceeded)

@@ -131,7 +131,7 @@ fn main() {
 
     // if being compiled for non-release, use this TrayIcon
     #[cfg(debug_assertions)]
-    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole (Non Release)", 255);
+    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole (Non Release)", 2);
 
     // if being compiled for release, use this TrayIcon
     #[cfg(not(debug_assertions))]
