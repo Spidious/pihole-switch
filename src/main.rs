@@ -131,7 +131,7 @@ fn main() {
 
     // if being compiled for non-release, use this TrayIcon
     #[cfg(debug_assertions)]
-    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole (Non Release)", 2);
+    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole (Non Release)", 255);
 
     // if being compiled for release, use this TrayIcon
     #[cfg(not(debug_assertions))]
@@ -222,10 +222,12 @@ fn main() {
                     pi_tray.show_disabled();
                 }
             },
-            Err(_) => {
-                // Display disabled
-                pi_tray.tray.inner_mut().set_menu_item_label("Status: Disabled", status_label).unwrap();
-                pi_tray.show_disabled();
+            Err(count) => {
+                if count >= pi_tray.max_fail() {
+                    // Display disabled
+                    pi_tray.tray.inner_mut().set_menu_item_label("Status: Disabled", status_label).unwrap();
+                    pi_tray.show_disabled();
+                }
             }
         }
 

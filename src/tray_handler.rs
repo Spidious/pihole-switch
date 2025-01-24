@@ -83,4 +83,8 @@ impl TrayIcon {
             Err(count) => Err(count)
         }
     }
+
+    pub fn max_fail(&self) -> u8 {
+        return self.fail_limit;
+    }
 }
