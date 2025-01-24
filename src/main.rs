@@ -129,8 +129,13 @@ fn main() {
         std::env::var("PI_HOLE_KEY").expect("PI_HOLE_KEY must be set").clone(),
     );
 
+    // if being compiled for non-release, use this TrayIcon
+    #[cfg(debug_assertions)]
+    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole (Non Release)", 2);
 
-    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole - NON RELEASE", 2);
+    // if being compiled for release, use this TrayIcon
+    #[cfg(not(debug_assertions))]
+    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole", 2); 
 
     // Add to the tray
     let status_label = pi_tray.tray.inner_mut().add_label_with_id("status_label").unwrap();
