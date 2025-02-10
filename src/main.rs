@@ -2,17 +2,26 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 //Begin imports
-use dotenv::dotenv;
+#[cfg(target_os = "linux")]
+use gtk::prelude::*;
+
+#[cfg(target_os = "windows")]
 use std::sync::mpsc;
-pub mod piapi_handler;
+
+use dotenv::dotenv;
+pub mod tray_functions;
 pub mod tray_handler;
+pub mod piapi_handler;
+// pub mod linux;
+// pub mod windows;
+
 
 // For async handling, just to make it shorter
-macro_rules! block_on {
-    ($expr:expr) => {{
-        tokio::runtime::Runtime::new().unwrap().block_on($expr)
-    }};
-}
+// macro_rules! block_on {
+//     ($expr:expr) => {{
+//         tokio::runtime::Runtime::new().unwrap().block_on($expr)
+//     }};
+// }
 
 // Create general logging message macro
 #[macro_export]
@@ -75,53 +84,15 @@ pub enum Message {
 }
 
 /// Determine the current state of pihole and toggle it on or off respectively
-async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
-    // Start match for the status call
-    match piapi.status().await {
-        Ok(status) => {
-            match status.get("status").map(String::as_str) {
-                Some("enabled") => {
-                    // disable pihole
-                    match piapi.disable(0).await {
-                        Ok(_) => {}
-                        Err(e) => {
-                            log_err!(format!("Error trying to disable: {}", e));
-                            eprintln!("Error trying to disable: {}", e);
-                        }
-                    }
-                }
-                Some("disabled") => {
-                    // enable pihole
-                    match piapi.enable().await {
-                        Ok(_) => {}
-                        Err(e) => {
-                            log_err!(format!("Issue trying to enable: {}", e));
-                            eprintln!("Error trying to enable: {}", e);
-                        }
-                    }
-                }
-                Some(other) => {
-                    log_err!(format!("Unexpected value in status: {}", other));
-                    eprintln!("Unexpected value in status: {}", other);
-                }
-                None => {
-                    log_err!("Key \"status\" not found in status api function");
-                    eprintln!("Key \"status\" not found in status api function");
-                }
-            }
-
-        }
-        Err(e) => {
-            log_err!(format!("Issue getting status {}", e));
-            eprintln!("ERROR getting status {}", e);
-        }
-    }
-}
+// todo: This is wehre toggle_pihole went
 
 // #[tokio::main]
 fn main() {
     // Prep retrieval of environment variables
     dotenv().ok();
+
+    #[cfg(target_os = "linux")]
+    gtk::init();
 
     // Retrieve env variables and create the api handler
     let pi_api = piapi_handler::AuthPiHoleAPI::new(
@@ -137,22 +108,25 @@ fn main() {
     #[cfg(not(debug_assertions))]
     let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole", 2); 
 
-    // Add to the tray
-    let status_label = pi_tray.tray.inner_mut().add_label_with_id("status_label").unwrap();
-
 
     // Setup tx/rx channel
+    #[cfg(target_os = "windows")]
     let (tx, rx) = mpsc::sync_channel(1);
     
     // Add break line
     pi_tray.tray.inner_mut().add_separator().unwrap();
 
     
-    
     // Setup open in browser button
+    #[cfg(target_os = "windows")]
     let open_browser_tx = tx.clone();
+    let pi_api_clone = pi_api.clone();
     pi_tray.tray.add_menu_item("Open in Browser", move || {
+        #[cfg(target_os = "windows")]
         open_browser_tx.send(Message::Open).unwrap();
+
+        #[cfg(target_os = "linux")]
+        tray_functions::open_browser(&pi_api_clone);
     })
     .unwrap();
 
@@ -160,30 +134,54 @@ fn main() {
     pi_tray.tray.inner_mut().add_separator().unwrap();
 
     // Setup enable button
+    #[cfg(target_os = "windows")]
     let toggle_tx = tx.clone();
+    let pi_api_clone = pi_api.clone();
     pi_tray.tray.add_menu_item("Toggle", move || {
+        #[cfg(target_os = "windows")]
         toggle_tx.send(Message::Toggle).unwrap();
+
+        #[cfg(target_os = "linux")]
+        tray_functions::toggle(&pi_api_clone);
     })
     .unwrap();
     
     // Setup disable button
+    #[cfg(target_os = "windows")]
     let disable_tx = tx.clone();
+    let pi_api_clone = pi_api.clone();
     pi_tray.tray.add_menu_item("Disable 10 Seconds", move || {
+        #[cfg(target_os = "windows")]
         disable_tx.send(Message::Disable10).unwrap();
+
+        #[cfg(target_os = "linux")]
+        tray_functions::disable_sec(&pi_api_clone, 10);
     })
     .unwrap();
 
     // Setup disable button
+    #[cfg(target_os = "windows")]
     let disable_tx = tx.clone();
+    let pi_api_clone = pi_api.clone();
     pi_tray.tray.add_menu_item("Disable 30 Seconds", move || {
+        #[cfg(target_os = "windows")]
         disable_tx.send(Message::Disable30).unwrap();
+
+        #[cfg(target_os = "linux")]
+        tray_functions::disable_sec(&pi_api_clone, 30);
     })
     .unwrap();
 
     // Setup disable button
+    #[cfg(target_os = "windows")]
     let disable_tx = tx.clone();
+    let pi_api_clone = pi_api.clone();
     pi_tray.tray.add_menu_item("Disable 5 minutes", move || {
+        #[cfg(target_os = "windows")]
         disable_tx.send(Message::Disable5min).unwrap();
+
+        #[cfg(target_os = "linux")]
+        tray_functions::disable_sec(&pi_api_clone, 60*5);
     })
     .unwrap();
 
@@ -191,15 +189,25 @@ fn main() {
     pi_tray.tray.inner_mut().add_separator().unwrap();
 
     // Add quit button (exits the app)
+    #[cfg(target_os = "windows")]
     let quit_tx = tx.clone();
     pi_tray.tray.add_menu_item("Quit", move || {
+        #[cfg(target_os = "windows")]
         quit_tx.send(Message::Quit).unwrap();
+
+        #[cfg(target_os = "linux")]
+        gtk::main_quit();
     })
     .unwrap();
 
     log_info!("Setup Complete! Entering mainloop");
 
     // infinite loop to keep app from dying
+
+    #[cfg(target_os = "linux")] 
+    gtk::main();
+
+    #[cfg(target_os = "windows")]
     loop {
         match pi_tray.test(|| {
             // Use block_on to call the async function in a synchronous context
@@ -214,18 +222,15 @@ fn main() {
                 // check enabled or disabled
                 if status == "enabled" {
                     // Display enabled
-                    pi_tray.tray.inner_mut().set_menu_item_label("Status: Enabled", status_label).unwrap();
                     pi_tray.show_enabled();
                 } else {
                     // Display disabled
-                    pi_tray.tray.inner_mut().set_menu_item_label("Status: Disabled", status_label).unwrap();
                     pi_tray.show_disabled();
                 }
             },
             Err(count) => {
                 if count >= pi_tray.max_fail() {
                     // Display disabled
-                    pi_tray.tray.inner_mut().set_menu_item_label("Status: Disabled", status_label).unwrap();
                     pi_tray.show_disabled();
                 }
             }
@@ -236,39 +241,18 @@ fn main() {
         if let Ok(message) = rx.recv_timeout(std::time::Duration::from_millis(100)) {
             if message == Message::Open {
                 // Open dashboard in browser
-                pi_api.open_dashboard();
-                log_info!("Action Received: Open Dashboard");
+                tray_functions::open_browser(&pi_api);
             } else if message == Message::Quit {
                 // Close the application
                 println!("Quit");
                 log_info!("Action Received: Quit");
                 break;
             } else if message == Message::Disable10 {
-                // Disable for 10 seconds
-                println!("Disable!!! 10 seconds");
-                log_info!("Action Received: Disable 10 Seconds");
-                if let Err(e) = block_on!(async {pi_api.disable(10).await}) {
-                    log_err!(format!("Action Failed: Disable 10 seconds => {}", e));
-                    eprintln!("Error calling disable: {}", e);
-                }
+                tray_functions::disable_sec(&pi_api, 10);
             } else if message == Message::Disable30 {
-                println!("Disable!!! 30 seconds");
-                log_info!("Action Received: Disable 30 Seconds");
-
-                // Disable for 30 seconds
-                if let Err(e) = block_on!(async {pi_api.disable(30).await}) {
-                    log_err!(format!("Action Failed: Disable 30 seconds => {}", e));
-                    eprintln!("Error calling disable: {}", e);
-                }
+                tray_functions::disable_sec(&pi_api, 30);
             } else if message == Message::Disable5min {
-                println!("Disable!!! 5 minutes");
-                log_info!("Action Received: Disable 5 Minutes");
-
-                // Disable for 60 * 5 seconds
-                if let Err(e) = block_on!(async {pi_api.disable(60 * 5).await}) {
-                    log_err!(format!("Action Failed: Disable 5 minutes => {}", e));
-                    eprintln!("Error calling disable: {}", e);
-                }
+                tray_functions::disable_sec(&pi_api, 60*5);
             } else if message == Message::Toggle {
                 println!("Toggle");
                 log_info!("Action Received: Toggle");

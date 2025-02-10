@@ -5,6 +5,15 @@ pub struct AuthPiHoleAPI {
     key: String,
 }
 
+impl Clone for AuthPiHoleAPI {
+    fn clone(&self) -> Self {
+        AuthPiHoleAPI {
+            host: self.host.clone(), // Clone the field
+            key: self.key.clone(),         // Primitive types like i32 implement Clone automatically
+        }
+    }
+}
+
 impl AuthPiHoleAPI {
     /// Create new AuthPiHoleAPI
     pub fn new(host: String, key: String) -> Self {
