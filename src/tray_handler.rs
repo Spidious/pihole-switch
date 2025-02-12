@@ -1,4 +1,5 @@
 use tray_item::{IconSource, TrayItem};
+#[cfg(target_os = "linux")]
 use crate::*;
 
 pub struct TrayIcon {
@@ -9,6 +10,8 @@ pub struct TrayIcon {
 
 }
 
+
+#[cfg(target_os = "linux")]
 struct Data {
     height: i32,
     width: i32,

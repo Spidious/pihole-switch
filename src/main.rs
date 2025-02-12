@@ -14,13 +14,15 @@ pub mod windows;
 #[cfg(target_os = "linux")]
 pub mod linux;
 
+#[cfg(target_os = "linux")]
+mod icons {
+    pub const BLANK_ICON: &[u8] = include_bytes!("../resources/Pi-hole_blank.ico");
+    pub const DISABLED_ICON: &[u8] = include_bytes!("../resources/Pi-hole_disabled.ico");
+    pub const ENABLED_ICON: &[u8] = include_bytes!("../resources/Pi-hole_enabled.ico");
+}
 
-// // For async handling, just to make it shorter
-// macro_rules! block_on {
-//     ($expr:expr) => {{
-//         tokio::runtime::Runtime::new().unwrap().block_on($expr)
-//     }};
-// }
+#[cfg(target_os = "linux")]
+use icons::{BLANK as BLANK_ICON, DISABLED as DISABLED_ICON, ENABLED as ENABLED_ICON};
 
 // Create general logging message macro
 #[macro_export]
@@ -71,9 +73,6 @@ macro_rules! log_err {
     };
 }
 
-const BLANK_ICON: &[u8] = include_bytes!("/home/luke/repos/pihole-switch/resources/Pi-hole_blank.ico");
-const DISABLED_ICON: &[u8] = include_bytes!("/home/luke/repos/pihole-switch/resources/Pi-hole_disabled.ico");
-const ENABLED_ICON: &[u8] = include_bytes!("/home/luke/repos/pihole-switch/resources/Pi-hole_enabled.ico");
 
 // #[tokio::main]
 fn main() {
