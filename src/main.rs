@@ -71,6 +71,10 @@ macro_rules! log_err {
     };
 }
 
+const BLANK_ICON: &[u8] = include_bytes!("/home/luke/repos/pihole-switch/resources/Pi-hole_blank.ico");
+const DISABLED_ICON: &[u8] = include_bytes!("/home/luke/repos/pihole-switch/resources/Pi-hole_disabled.ico");
+const ENABLED_ICON: &[u8] = include_bytes!("/home/luke/repos/pihole-switch/resources/Pi-hole_enabled.ico");
+
 // #[tokio::main]
 fn main() {
     // Prep retrieval of environment variables

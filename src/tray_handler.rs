@@ -1,4 +1,5 @@
 use tray_item::{IconSource, TrayItem};
+use crate::*;
 
 pub struct TrayIcon {
     pub tray: TrayItem,
@@ -8,11 +9,81 @@ pub struct TrayIcon {
 
 }
 
+struct Data {
+    height: i32,
+    width: i32,
+    data: Vec<u8>,
+}
+
+// Load image from embedded bytes
+#[cfg(target_os = "linux")]
+fn load_embedded_image(image: &[u8]) -> Data {
+    // Get ImageBuffer
+    let img = image::load_from_memory(image)
+        .expect("Failed to decode embedded image")
+        .to_rgba8();
+
+    // Grab current width and height
+    let (mut width, height) = img.dimensions();
+    let mut data = img.into_raw(); // Convert to raw RGBA bytes
+
+    // Ensure the image is square
+    if width < height {
+        let pad = height - width;
+        let mut new_data = Vec::with_capacity((height * height * 4) as usize);
+        
+        for row in data.chunks_exact((width * 4) as usize) {
+            new_data.extend_from_slice(row);
+            new_data.extend(vec![0; (pad * 4) as usize]); // Pad with transparent pixels
+        }
+
+        data = new_data;
+        width = height; // Now it's square
+    }
+
+    // Apply color shift
+    for pixel in data.chunks_exact_mut(4) {
+        pixel.rotate_left(3); // Shift RGBA -> GBAR -> BARG -> ARGB
+    }
+
+    // Return a Data struct
+    Data {
+        height: height as i32,
+        width: width as i32,
+        data,
+    }
+}
+
 // add updates for these
 impl TrayIcon {
-    // Constructor function to build and setup the trayIcon
+    // Constructor function to build and setup the trayIcon for linux
+    #[cfg(target_os = "linux")]
     pub fn new(title: &str, fail_limit: u8) -> Self {
         // Create TrayItem
+        let image_data = load_embedded_image(BLANK_ICON);
+
+        let tray = TrayItem::new(
+            title, 
+            IconSource::Data {
+                data: image_data.data,
+                width: image_data.width,
+                height: image_data.height,
+            })
+            .unwrap();
+
+        // Init tray status
+        let status = false;
+        // Init tray fail_count
+        let fail_count = 0;
+
+
+        Self {tray, status, fail_count, fail_limit}
+    }
+
+    // Constructor function to build and setup the trayIcon for windows
+    #[cfg(target_os = "windows")]
+    pub fn new(title: &str, fail_limit: u8) -> Self {
+
         let tray = TrayItem::new(
             title, 
             IconSource::Resource("APPICON_DISABLED"))
@@ -45,7 +116,38 @@ impl TrayIcon {
         }
     }
 
+    #[cfg(target_os = "linux")]
+    pub fn show_enabled(&mut self) {
+        // Only do this if the status is not already enabled
+        if !self.status {
+            // Retrieve image data from embedded image
+            let image_data = load_embedded_image(ENABLED_ICON);
 
+            self.tray.set_icon(IconSource::Data {
+                data: image_data.data,
+                width: image_data.width,
+                height: image_data.height,
+            }).unwrap(); // set the enabled icon
+            self.status = true;
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn show_disabled(&mut self) {
+        if self.status {
+            // Retrieve image data from embedded image
+            let image_data = load_embedded_image(DISABLED_ICON);
+
+            self.tray.set_icon(IconSource::Data {
+                data: image_data.data,
+                width: image_data.width,
+                height: image_data.height,
+            }).unwrap();
+            self.status = false;
+        }
+    }
+
+    #[cfg(target_os = "windows")]
     pub fn show_enabled(&mut self) {
         // Only do this if the status is not already enabled
         if !self.status {
@@ -54,6 +156,7 @@ impl TrayIcon {
         }
     }
 
+    #[cfg(target_os = "windows")]
     pub fn show_disabled(&mut self) {
         if self.status {
             self.tray.set_icon(IconSource::Resource("APPICON_DISABLED")).unwrap();
