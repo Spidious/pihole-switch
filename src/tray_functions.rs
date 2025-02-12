@@ -7,7 +7,7 @@ macro_rules! block_on {
     }};
 }
 
-async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
+pub async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
     // Start match for the status call
     match piapi.status().await {
         Ok(status) => {

@@ -4,13 +4,18 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-gtk = "0.18"
 dotenv = "0.15"
-tray-item = { version = "0.10.0", features = ["libappindicator"] }
 open = "5.3.1"
 reqwest = { version = "0.12", features = ["json"] }
 tokio = { version = "1", features = ["full"] }
 chrono = "0.4.39"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = { version = "0.18"}
+tray-item = { version = "0.10.0", features = ["libappindicator"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+tray-item = "0.10.0"
 
 [build-dependencies]
 embed-resource = "2.5"
