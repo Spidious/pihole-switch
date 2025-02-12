@@ -2,8 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 //Begin imports
-// #[cfg(target_os = "linux")]
-// use gtk::prelude::*;
+#[cfg(target_os = "linux")]
+use gtk::prelude::*;
 
 #[cfg(target_os = "windows")]
 use std::sync::mpsc;
@@ -91,8 +91,8 @@ fn main() {
     // Prep retrieval of environment variables
     dotenv().ok();
 
-    // #[cfg(target_os = "linux")]
-    // gtk::init();
+    #[cfg(target_os = "linux")]
+    gtk::init();
 
     // Retrieve env variables and create the api handler
     let pi_api = piapi_handler::AuthPiHoleAPI::new(
@@ -195,8 +195,8 @@ fn main() {
         #[cfg(target_os = "windows")]
         quit_tx.send(Message::Quit).unwrap();
 
-        // #[cfg(target_os = "linux")]
-        // gtk::main_quit();
+        #[cfg(target_os = "linux")]
+        gtk::main_quit();
     })
     .unwrap();
 
@@ -204,8 +204,8 @@ fn main() {
 
     // infinite loop to keep app from dying
 
-    // #[cfg(target_os = "linux")] 
-    // gtk::main();
+    #[cfg(target_os = "linux")] 
+    gtk::main();
 
     #[cfg(target_os = "windows")]
     loop {
