@@ -7,6 +7,17 @@
 use crate::*;
 use std::sync::mpsc;
 
+// Used for rx/tx of the system tray menu
+#[derive(PartialEq)]
+pub enum Message {
+    Open,
+    Quit,
+    Disable10,
+    Disable30,
+    Disable5min,
+    Toggle,
+}
+
 /// Mainloop function for windows
 /// pi_api - Pihole API handler
 /// pi_tray - tray handler

@@ -1,5 +1,6 @@
 // Run without terminal if not in debug
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+// todo: Figure out doing this for linux
 
 //Begin imports
 #[cfg(target_os = "linux")]
@@ -10,8 +11,8 @@ use dotenv::dotenv;
 pub mod tray_functions;
 pub mod tray_handler;
 pub mod piapi_handler;
-// pub mod linux;
 pub mod windows;
+// pub mod linux;
 
 
 // // For async handling, just to make it shorter
@@ -69,20 +70,6 @@ macro_rules! log_err {
         log_message!("ERROR", $msg);
     };
 }
-
-// Used for rx/tx of the system tray menu
-#[derive(PartialEq)]
-pub enum Message {
-    Open,
-    Quit,
-    Disable10,
-    Disable30,
-    Disable5min,
-    Toggle,
-}
-
-/// Determine the current state of pihole and toggle it on or off respectively
-// todo: This is where toggle_pihole went
 
 // #[tokio::main]
 fn main() {
