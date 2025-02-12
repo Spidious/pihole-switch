@@ -2,17 +2,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 // todo: Figure out doing this for linux
 
-//Begin imports
-#[cfg(target_os = "linux")]
-use gtk::prelude::*;
-
 
 use dotenv::dotenv;
 pub mod tray_functions;
 pub mod tray_handler;
 pub mod piapi_handler;
+
+#[cfg(target_os = "windows")]
 pub mod windows;
-// pub mod linux;
+
+#[cfg(target_os = "linux")]
+pub mod linux;
 
 
 // // For async handling, just to make it shorter
@@ -76,14 +76,19 @@ fn main() {
     // Prep retrieval of environment variables
     dotenv().ok();
 
-    #[cfg(target_os = "linux")]
-    gtk::init();
-
     // Retrieve env variables and create the api handler
     let pi_api = piapi_handler::AuthPiHoleAPI::new(
         std::env::var("PI_HOLE_ADDR").expect("PI_HOLE_ADDR must be set").clone(),
         std::env::var("PI_HOLE_KEY").expect("PI_HOLE_KEY must be set").clone(),
     );
+
+    // If unable to initialize GTK then the app cannot run anyway. Submit log and quit
+    // Must do this before pi_tray is created as it will cause rust to panic
+    #[cfg(target_os = "linux")]
+    if let Err(e) = gtk::init() {
+        log_err!(format!("{}", e));
+        return;
+    }
 
     // if being compiled for non-release, use this TrayIcon
     #[cfg(debug_assertions)]
@@ -93,61 +98,9 @@ fn main() {
     #[cfg(not(debug_assertions))]
     let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole", 2); 
     
-    #[cfg(target_os = "linux")]
-    {
-        let pi_api_clone = pi_api.clone();
-        // Setup open in browser button
-        pi_tray.tray.add_menu_item("Open in Browser", move || {
-            tray_functions::open_browser(&pi_api_clone);
-        })
-        .unwrap();
-        // Add break line
-        pi_tray.tray.inner_mut().add_separator().unwrap();
-    
-        // Setup enable button
-        let pi_api_clone = pi_api.clone();
-        pi_tray.tray.add_menu_item("Toggle", move || {
-            tray_functions::toggle(&pi_api_clone);
-        })
-        .unwrap();
-
-        // Setup disable button
-        let pi_api_clone = pi_api.clone();
-        pi_tray.tray.add_menu_item("Disable 10 Seconds", move || {
-            tray_functions::disable_sec(&pi_api_clone, 10);
-        })
-        .unwrap();
-
-        // Setup disable button
-        let pi_api_clone = pi_api.clone();
-        pi_tray.tray.add_menu_item("Disable 30 Seconds", move || {
-            tray_functions::disable_sec(&pi_api_clone, 30);
-        })
-        .unwrap();
-
-        // Setup disable button
-        let pi_api_clone = pi_api.clone();
-        pi_tray.tray.add_menu_item("Disable 5 minutes", move || {
-            tray_functions::disable_sec(&pi_api_clone, 60*5);
-        })
-        .unwrap();
-    
-        // Add break line
-        pi_tray.tray.inner_mut().add_separator().unwrap();
-
-        // Add quit button (exits the app)
-        pi_tray.tray.add_menu_item("Quit", move || {
-            gtk::main_quit();
-        })
-        .unwrap();
-    }
-
-    log_info!("Setup Complete! Entering mainloop");
-
     // infinite loop to keep app from dying
-
     #[cfg(target_os = "linux")]  // LINUX mainloop
-    gtk::main();
+    linux::main(&pi_api, pi_tray);
 
     #[cfg(target_os = "windows")] // WINDOWS mainloop
     windows::main(&pi_api, pi_tray);

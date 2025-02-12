@@ -58,16 +58,12 @@ pub async fn open_browser(pi_api: &piapi_handler::AuthPiHoleAPI) {
     log_info!("Action Received: Open Dashboard");
 }
 
-pub async fn toggle(pi_api: &piapi_handler::AuthPiHoleAPI) {
-    block_on!(async {toggle_pihole(&pi_api).await});
-}
-
 pub async fn disable_sec(pi_api: &piapi_handler::AuthPiHoleAPI, time: u64) {
     println!("Disable!!! {} seconds", time);
     log_info!("Action Received: Disable 30 Seconds");
 
     // Disable for 30 seconds
-    if let Err(e) = block_on!(async {pi_api.disable(time).await}) {
+    if let Err(e) = pi_api.disable(time).await {
         log_err!(format!("Action Failed: Disable 30 seconds => {}", e));
         eprintln!("Error calling disable: {}", e);
     }

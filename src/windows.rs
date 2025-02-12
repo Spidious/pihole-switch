@@ -33,7 +33,7 @@ pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::Tra
     })
     .unwrap();
 
-    // Add a break in the message
+    // Add a break in the tray
     pi_tray.tray.inner_mut().add_separator().unwrap();
 
     // Add the "toggle" Button
@@ -68,7 +68,7 @@ pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::Tra
     })
     .unwrap();
 
-    // Add break line
+    // Add a break in the tray
     pi_tray.tray.inner_mut().add_separator().unwrap();
 
     // Add quit button (exits the app)
