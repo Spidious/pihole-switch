@@ -1,6 +1,7 @@
-use crate::piapi_handler;
+use crate::*;
 
 // For async handling, just to make it shorter
+#[macro_export]
 macro_rules! block_on {
     ($expr:expr) => {{
         tokio::runtime::Runtime::new().unwrap().block_on($expr)
@@ -54,7 +55,7 @@ pub async fn toggle_pihole(piapi: &piapi_handler::AuthPiHoleAPI) {
 pub async fn open_browser(pi_api: &piapi_handler::AuthPiHoleAPI) {
     // Call action in pi_api
     pi_api.open_dashboard();
-    // log_info!("Action Received: Open Dashboard");
+    log_info!("Action Received: Open Dashboard");
 }
 
 pub async fn toggle(pi_api: &piapi_handler::AuthPiHoleAPI) {
@@ -63,11 +64,11 @@ pub async fn toggle(pi_api: &piapi_handler::AuthPiHoleAPI) {
 
 pub async fn disable_sec(pi_api: &piapi_handler::AuthPiHoleAPI, time: u64) {
     println!("Disable!!! {} seconds", time);
-    // log_info!("Action Received: Disable 30 Seconds");
+    log_info!("Action Received: Disable 30 Seconds");
 
     // Disable for 30 seconds
     if let Err(e) = block_on!(async {pi_api.disable(time).await}) {
-        // log_err!(format!("Action Failed: Disable 30 seconds => {}", e));
+        log_err!(format!("Action Failed: Disable 30 seconds => {}", e));
         eprintln!("Error calling disable: {}", e);
     }
 }
