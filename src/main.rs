@@ -3,7 +3,7 @@
 // todo: Figure out doing this for linux
 
 
-use dotenv::dotenv;
+use dotenv::from_path;
 pub mod tray_functions;
 pub mod tray_handler;
 pub mod piapi_handler;
@@ -22,7 +22,7 @@ mod icons {
 }
 
 #[cfg(target_os = "linux")]
-use icons::{BLANK as BLANK_ICON, DISABLED as DISABLED_ICON, ENABLED as ENABLED_ICON};
+use icons::*;
 
 // Create general logging message macro
 #[macro_export]
@@ -73,11 +73,36 @@ macro_rules! log_err {
     };
 }
 
+fn get_cargo_root() -> Option<std::path::PathBuf> {
+    let mut exe_path = std::env::current_exe().ok()?;
+
+    // Go up the directory tree from the executable's location
+    while !exe_path.join(".env").exists() {
+        if !exe_path.pop() {
+            return None; // reached the root without finding .env
+        }
+    }
+
+    // Return the path with .env appended
+    Some(exe_path.join(".env"))
+}
 
 // #[tokio::main]
 fn main() {
+
+    // Store the result in a variable to extend the lifetime
+    let cargo_root = get_cargo_root()
+        .expect("Could not find env");
+
+    // Now use it to create the env_path
+    let env_path = std::path::Path::new(
+        cargo_root.to_str()
+            .expect("Path contains invalid Unicode")
+    );
+
+    from_path(env_path).expect("Failed to load .env file");
     // Prep retrieval of environment variables
-    dotenv().ok();
+    // dotenv().ok();
 
     // Retrieve env variables and create the api handler
     let pi_api = piapi_handler::AuthPiHoleAPI::new(
