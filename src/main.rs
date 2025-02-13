@@ -124,7 +124,7 @@ fn main() {
 
     // if being compiled for release, use this TrayIcon
     #[cfg(not(debug_assertions))]
-    let mut pi_tray = tray_handler::TrayIcon::new("Pi-Hole", 2); 
+    let pi_tray = tray_handler::TrayIcon::new("Pi-Hole", 2); 
     
     // infinite loop to keep app from dying
     #[cfg(target_os = "linux")]  // LINUX mainloop
