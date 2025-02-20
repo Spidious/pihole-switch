@@ -1,4 +1,5 @@
 use tray_item::{IconSource, TrayItem};
+use crate::piapi_handler::AuthPiHoleAPI;
 #[cfg(target_os = "linux")]
 use crate::*;
 
@@ -193,4 +194,34 @@ impl TrayIcon {
     pub fn max_fail(&self) -> u8 {
         return self.fail_limit;
     }
+
+    pub fn update_status_icon(&mut self, pi_api: AuthPiHoleAPI) {
+        match self.test(|| {
+            // Use block_on to call the async function in a synchronous context
+            block_on!(async {
+                pi_api.status().await  // Call the async function and await its result
+            })
+        }) {
+            Ok(response) => {
+                // Parse the output of the api call
+                let status = response.get("status").unwrap();
+    
+                // check enabled or disabled
+                if status == "enabled" {
+                    // Display enabled
+                    self.show_enabled();
+                } else {
+                    // Display disabled
+                    self.show_disabled();
+                }
+            },
+            Err(count) => {
+                if count >= self.max_fail() {
+                    // Display disabled
+                    self.show_disabled();
+                }
+            }
+        }
+    }
+
 }

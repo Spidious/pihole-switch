@@ -8,7 +8,7 @@ use crate::*;
 use gtk;
 use gtk_sys;
 
-pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::TrayIcon) {
+pub fn main(pi_api: piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::TrayIcon) {
 
     // Add "Open in Browser" Button
     // Open the pihole dashboard in the default browser
@@ -59,9 +59,20 @@ pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::Tra
     // Add quit button (exits the app)
     pi_tray.tray.add_menu_item("Quit", move || {
         unsafe { gtk_sys::gtk_main_quit(); } // TODO: Recommended method from the docs but should ideally try to find a better method
+        
     })
     .unwrap();
 
+
+    // Setup status checks for icon
+    glib::idle_add_local(move || {
+        let pi_api_clone = pi_api.clone();
+        pi_tray.update_status_icon(pi_api_clone);
+        glib::ControlFlow::Continue
+    });
+    
+
+    // Enter the mainloop
     log_info!("Setup Complete! Entering Mainloop.");
     gtk::main();
 }

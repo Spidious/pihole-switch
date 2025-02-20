@@ -80,32 +80,7 @@ pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::Tra
     
     // Enter mainloop to keep app from dying
     loop {
-        match pi_tray.test(|| {
-            // Use block_on to call the async function in a synchronous context
-            block_on!(async {
-                pi_api.status().await  // Call the async function and await its result
-            })
-        }) {
-            Ok(response) => {
-                // Parse the output of the api call
-                let status = response.get("status").unwrap();
-    
-                // check enabled or disabled
-                if status == "enabled" {
-                    // Display enabled
-                    pi_tray.show_enabled();
-                } else {
-                    // Display disabled
-                    pi_tray.show_disabled();
-                }
-            },
-            Err(count) => {
-                if count >= pi_tray.max_fail() {
-                    // Display disabled
-                    pi_tray.show_disabled();
-                }
-            }
-        }
+        pi_tray.update_status_icon(pi_api);
     
         // Handle the button presses from the system tray
         // Specifically stop here for 50ms because the status above needs to execute

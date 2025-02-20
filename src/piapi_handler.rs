@@ -1,18 +1,23 @@
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct AuthPiHoleAPI {
     host: String,
     key: String,
 }
 
-impl Clone for AuthPiHoleAPI {
-    fn clone(&self) -> Self {
-        AuthPiHoleAPI {
-            host: self.host.clone(), // Clone the field
-            key: self.key.clone(),         // Primitive types like i32 implement Clone automatically
-        }
-    }
-}
+// trait Copy: Clone {
+
+// }
+
+// impl Clone for AuthPiHoleAPI {
+//     fn clone(&self) -> Self {
+//         AuthPiHoleAPI {
+//             host: self.host.clone(), // Clone the field
+//             key: self.key.clone(),         // Primitive types like i32 implement Clone automatically
+//         }
+//     }
+// }
 
 impl AuthPiHoleAPI {
     /// Create new AuthPiHoleAPI
@@ -79,9 +84,11 @@ impl AuthPiHoleAPI {
 
         // Call the api
         let resp = reqwest::get(url)
-            .await?
+            .await
+            .expect("Http request failed")
             .json::<HashMap<String, String>>()
-            .await?;
+            .await
+            .expect("Json parsing failed");
         
         // Pass the response back
         Ok(resp)
