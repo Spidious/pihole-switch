@@ -129,6 +129,7 @@ fn main() {
     // infinite loop to keep app from dying
     #[cfg(target_os = "linux")]  // LINUX mainloop
     linux::main(&pi_api, pi_tray);
+    
 
     #[cfg(target_os = "windows")] // WINDOWS mainloop
     windows::main(&pi_api, pi_tray);

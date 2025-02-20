@@ -1566,6 +1566,7 @@ dependencies = [
  "dotenv",
  "embed-resource",
  "gtk",
+ "gtk-sys",
  "image",
  "open",
  "reqwest",

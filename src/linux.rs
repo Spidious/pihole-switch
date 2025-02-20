@@ -6,6 +6,7 @@
  */
 use crate::*;
 use gtk;
+use gtk_sys;
 
 pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::TrayIcon) {
 
@@ -57,7 +58,7 @@ pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::Tra
 
     // Add quit button (exits the app)
     pi_tray.tray.add_menu_item("Quit", move || {
-        gtk::main_quit();
+        unsafe { gtk_sys::gtk_main_quit(); } // TODO: Recommended method from the docs but should ideally try to find a better method
     })
     .unwrap();
 
