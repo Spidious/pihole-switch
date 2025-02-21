@@ -64,12 +64,13 @@ pub fn main(pi_api: piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::Tray
     .unwrap();
 
 
-    // Setup status checks for icon
-    glib::idle_add_local(move || {
+    // Setup status checks for icon with a delay
+    glib::timeout_add_local(std::time::Duration::from_secs(1), move || {
         let pi_api_clone = pi_api.clone();
         pi_tray.update_status_icon(pi_api_clone);
         glib::ControlFlow::Continue
     });
+
     
 
     // Enter the mainloop
