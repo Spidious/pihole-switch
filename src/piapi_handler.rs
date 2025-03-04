@@ -4,25 +4,15 @@ use std::collections::HashMap;
 pub struct AuthPiHoleAPI {
     host: String,
     key: String,
+    client: reqwest::Client,
 }
-
-// trait Copy: Clone {
-
-// }
-
-// impl Clone for AuthPiHoleAPI {
-//     fn clone(&self) -> Self {
-//         AuthPiHoleAPI {
-//             host: self.host.clone(), // Clone the field
-//             key: self.key.clone(),         // Primitive types like i32 implement Clone automatically
-//         }
-//     }
-// }
 
 impl AuthPiHoleAPI {
     /// Create new AuthPiHoleAPI
     pub fn new(host: String, key: String) -> Self {
-        Self {host, key}
+        // Create client here to prevent opening a new connection each time
+        let client = reqwest::Client::new();
+        Self {host, key, client}
     }
 
     /// Open the dashboard in the default browser
@@ -47,7 +37,7 @@ impl AuthPiHoleAPI {
         );
     
         // Call api
-        let resp = reqwest::get(url)
+        let resp = self.client.get(url).send()
             .await?
             .json::<HashMap<String, String>>()
             .await?;
@@ -65,7 +55,7 @@ impl AuthPiHoleAPI {
         );
 
         // Call the api
-        let resp = reqwest::get(url)
+        let resp = self.client.get(url).send()
             .await?
             .json::<HashMap<String, String>>()
             .await?;
@@ -76,6 +66,7 @@ impl AuthPiHoleAPI {
 
     // Retrieve the status of the pihole (enabled or disabled)
     pub async fn status(&self) -> Result<HashMap<String, String>, Box<dyn std::error::Error>> {
+
         // Format the url (Because the api crate doesn't include this call)
         let url = format!("{}/admin/api.php?status&auth={}", 
             self.host,
@@ -83,7 +74,7 @@ impl AuthPiHoleAPI {
         );
 
         // Call the api
-        let resp = reqwest::get(url)
+        let resp = self.client.get(url).send()
             .await
             .expect("Http request failed")
             .json::<HashMap<String, String>>()
