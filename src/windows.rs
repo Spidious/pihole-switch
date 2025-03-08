@@ -21,7 +21,7 @@ pub enum Message {
 /// Mainloop function for windows
 /// pi_api - Pihole API handler
 /// pi_tray - tray handler
-pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::TrayIcon) {
+pub fn main(pi_api: piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::TrayIcon) {
     // Setup tx/rx channel
     let (tx, rx) = mpsc::sync_channel(1);
 
@@ -80,7 +80,7 @@ pub fn main(pi_api: &piapi_handler::AuthPiHoleAPI, mut pi_tray:tray_handler::Tra
     
     // Enter mainloop to keep app from dying
     loop {
-        pi_tray.update_status_icon(pi_api);
+        pi_tray.update_status_icon(&pi_api);
     
         // Handle the button presses from the system tray
         // Specifically stop here for 50ms because the status above needs to execute

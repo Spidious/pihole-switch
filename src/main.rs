@@ -132,7 +132,7 @@ fn main() {
     
 
     #[cfg(target_os = "windows")] // WINDOWS mainloop
-    windows::main(&pi_api, pi_tray);
+    windows::main(pi_api, pi_tray);
 
     log_warn!("Loop exited program ending");
 }

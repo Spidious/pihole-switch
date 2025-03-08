@@ -1,6 +1,6 @@
 use tray_item::{IconSource, TrayItem};
 use crate::piapi_handler::AuthPiHoleAPI;
-#[cfg(target_os = "linux")]
+// #[cfg(target_os = "linux")]
 use crate::*;
 
 pub struct TrayIcon {
@@ -195,7 +195,7 @@ impl TrayIcon {
         return self.fail_limit;
     }
 
-    pub fn update_status_icon(&mut self, pi_api: AuthPiHoleAPI) {
+    pub fn update_status_icon(&mut self, pi_api: &AuthPiHoleAPI) {
         match self.test(|| {
             // Use block_on to call the async function in a synchronous context
             block_on!(async {
